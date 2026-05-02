@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Controle de Mensalidades</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+
+<div x-data="app()" class="max-w-full mx-auto px-2">
+  <div class="bg-white rounded-2xl shadow-md p-6">
+
+    <!-- Cabeçalho -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Controle de Mensalidades</h1>
+        <p class="text-sm text-gray-500 mt-1" x-text="anoAtual"></p>
+      </div>
+      <div class="text-right">
+        <p class="text-sm text-gray-500">Pagamentos no mês atual</p>
+        <p class="text-2xl font-bold" :class="pagosNoMesAtual === pessoas.length ? 'text-green-600' : 'text-blue-600'">
+          <span x-text="pagosNoMesAtual"></span>/<span x-text="pessoas.length"></span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Card de saldo -->
+    <div
+      class="rounded-xl px-4 py-3 mb-6 inline-flex items-center gap-4 border"
+      :class="saldoTotal >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'"
+    >
+      <div>
+        <p class="text-xs font-medium" :class="saldoTotal >= 0 ? 'text-green-600' : 'text-red-500'">Saldo total</p>
+        <p class="text-xl font-bold mt-0.5" :class="saldoTotal >= 0 ? 'text-green-700' : 'text-red-600'" x-text="`R$ ${saldoTotal.toFixed(2)}`"></p>
+      </div>
+      <div class="text-xs text-gray-400 leading-5">
+        <p x-text="`+ R$ ${totalEntradas.toFixed(2)} entradas`"></p>
+        <p x-text="`− R$ ${totalGastos.toFixed(2)} gastos`"></p>
+      </div>
+    </div>
+
+
+    <!-- Adicionar pessoa -->
+    <form @submit.prevent="adicionarPessoa" class="flex gap-2 mb-6">
+      <input
+        x-model="novaPessoa"
+        type="text"
+        placeholder="Nome da pessoa..."
+        class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+      />
+      <button
+        type="submit"
+        class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+      >
+        Adicionar
+      </button>
+      <button
+        type="button"
+        @click="travado = !travado"
+        :title="travado ? 'Destravar edição' : 'Travar edição'"
+        class="flex items-center justify-center w-10 rounded-lg border transition-colors"
+        :class="travado
+          ? 'border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600'
+          : 'border-blue-400 text-blue-600 bg-blue-50 hover:bg-blue-100'"
+      >
+        <!-- Trancado -->
+        <template x-if="travado">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </template>
+        <!-- Destrancado -->
+        <template x-if="!travado">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 018 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+          </svg>
+        </template>
+      </button>
+    </form>
+
+    <!-- Tabela -->
+    <div class="overflow-x-auto rounded-xl border border-gray-200">
+      <table class="w-full text-sm border-collapse">
+        <thead>
+          <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+            <th class="text-left px-4 py-3 sticky left-0 bg-gray-50 z-10 border-r border-gray-200 min-w-[140px]">Nome</th>
+            <template x-for="mes in meses" :key="mes.num">
+              <th
+                class="text-center px-1 py-3 min-w-[36px] font-semibold"
+                :class="mes.num === mesAtualNum ? 'text-blue-600 bg-blue-50' : ''"
+                x-text="mes.abrev"
+              ></th>
+            </template>
+            <th class="text-center px-4 py-3 sticky right-0 bg-gray-50 z-10 border-l border-gray-200">Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-if="pessoas.length === 0">
+            <tr>
+              <td :colspan="meses.length + 2" class="text-center py-8 text-gray-400">Nenhuma pessoa cadastrada.</td>
+            </tr>
+          </template>
+          <template x-for="pessoa in pessoas" :key="pessoa.id">
+            <tr class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+              <td class="px-4 py-3 font-medium text-gray-800 sticky left-0 bg-white hover:bg-gray-50 z-10 border-r border-gray-100" x-text="pessoa.nome"></td>
+              <template x-for="mes in meses" :key="mes.num">
+                <td
+                  class="text-center px-1 py-3"
+                  :class="mes.num === mesAtualNum ? 'bg-blue-50/40' : ''"
+                >
+                  <button
+                    @click="toggleMes(pessoa, mes.num)"
+                    :title="{ pendente: 'Pendente → Pago', pago: 'Pago → Isento', isento: 'Isento → Pendente' }[pessoa.meses[mes.num].status]"
+                    class="mx-auto flex items-center justify-center rounded-full w-6 h-6 transition-colors"
+                    :class="{
+                      'cursor-default':                     travado,
+                      'text-red-500':                       pessoa.meses[mes.num].status === 'pendente',
+                      'text-green-600':                     pessoa.meses[mes.num].status === 'pago',
+                      'text-yellow-500':                    pessoa.meses[mes.num].status === 'isento',
+                      'hover:bg-red-50':                    !travado && pessoa.meses[mes.num].status === 'pendente',
+                      'hover:bg-green-100':                 !travado && pessoa.meses[mes.num].status === 'pago',
+                      'hover:bg-yellow-50':                 !travado && pessoa.meses[mes.num].status === 'isento',
+                    }"
+                  >
+                    <!-- Pendente: X circular -->
+                    <template x-if="pessoa.meses[mes.num].status === 'pendente'">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </template>
+                    <!-- Pago: check circular -->
+                    <template x-if="pessoa.meses[mes.num].status === 'pago'">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </template>
+                    <!-- Isento: traço circular -->
+                    <template x-if="pessoa.meses[mes.num].status === 'isento'">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </template>
+                  </button>
+                </td>
+              </template>
+              <td class="text-center px-4 py-3 sticky right-0 bg-white hover:bg-gray-50 z-10 border-l border-gray-100">
+                <button
+                  @click="removerPessoa(pessoa.id)"
+                  class="text-gray-300 hover:text-red-500 transition-colors mx-auto flex items-center justify-center"
+                  title="Remover pessoa"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </template>
+
+          <!-- Linha de totais -->
+          <template x-if="pessoas.length > 0">
+            <tr class="border-t-2 border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500">
+              <td class="px-4 py-2 sticky left-0 bg-gray-50 z-10 border-r border-gray-200">Total pago</td>
+              <template x-for="mes in meses" :key="mes.num">
+                <td
+                  class="text-center px-1 py-2"
+                  :class="mes.num === mesAtualNum ? 'bg-blue-50/40' : ''"
+                >
+                  <span
+                    :class="totalPorMes(mes.num) === pessoas.length
+                      ? 'text-green-600'
+                      : totalPorMes(mes.num) === 0
+                        ? 'text-gray-300'
+                        : 'text-blue-600'"
+                    x-text="totalPorMesLabel(mes.num)"
+                  ></span>
+                </td>
+              </template>
+              <td class="sticky right-0 bg-gray-50 z-10 border-l border-gray-200"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tabela de gastos -->
+    <div class="mt-8">
+      <h2 class="text-base font-semibold text-gray-700 mb-3">Gastos</h2>
+
+      <form @submit.prevent="adicionarGasto" class="flex gap-2 mb-4">
+        <input
+          x-model="novoGastoDescricao"
+          type="text"
+          placeholder="Descrição..."
+          class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+        />
+        <input
+          x-model.number="novoGastoValor"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="Valor (R$)"
+          class="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+        />
+        <button
+          type="submit"
+          class="bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+        >
+          Adicionar
+        </button>
+      </form>
+
+      <div class="overflow-hidden rounded-xl border border-gray-200">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+              <th class="text-left px-4 py-3">Descrição</th>
+              <th class="text-center px-4 py-3">Data</th>
+              <th class="text-right px-4 py-3">Valor</th>
+              <th class="text-center px-4 py-3 w-12"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-if="gastos.length === 0">
+              <tr>
+                <td colspan="4" class="text-center py-6 text-gray-400">Nenhum gasto registrado.</td>
+              </tr>
+            </template>
+            <template x-for="gasto in gastos" :key="gasto.id">
+              <tr class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                <td class="px-4 py-3 text-gray-800" x-text="gasto.descricao"></td>
+                <td class="px-4 py-3 text-center text-gray-400 text-xs" x-text="gasto.data"></td>
+                <td class="px-4 py-3 text-right font-medium text-red-500" x-text="`- R$ ${gasto.valor.toFixed(2)}`"></td>
+                <td class="px-4 py-3 text-center">
+                  <button
+                    @click="removerGasto(gasto.id)"
+                    class="text-gray-300 hover:text-red-500 transition-colors mx-auto flex items-center justify-center"
+                    title="Remover gasto"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Estado de carregamento / erro -->
+    <template x-if="carregando">
+      <div class="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">
+        <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+        </svg>
+        Carregando dados...
+      </div>
+    </template>
+    <template x-if="erro">
+      <p class="text-xs text-red-400 text-center mt-4" x-text="erro"></p>
+    </template>
+    <template x-if="!carregando && !erro">
+      <p class="text-xs text-gray-400 text-center mt-6">Os dados são salvos automaticamente no JSONBin.</p>
+    </template>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+const MESES = [
+  { num: 1,  abrev: 'Jan' },
+  { num: 2,  abrev: 'Fev' },
+  { num: 3,  abrev: 'Mar' },
+  { num: 4,  abrev: 'Abr' },
+  { num: 5,  abrev: 'Mai' },
+  { num: 6,  abrev: 'Jun' },
+  { num: 7,  abrev: 'Jul' },
+  { num: 8,  abrev: 'Ago' },
+  { num: 9,  abrev: 'Set' },
+  { num: 10, abrev: 'Out' },
+  { num: 11, abrev: 'Nov' },
+  { num: 12, abrev: 'Dez' },
+]
+
+const CICLO = ['pendente', 'pago', 'isento']
+
+function mesesVazios() {
+  return Object.fromEntries(MESES.map(m => [m.num, { status: 'pendente', data: null }]))
+}
+
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN}`
+
+async function carregarDados() {
+  const res = await fetch(`${JSONBIN_URL}/latest`, {
+    headers: { 'X-Master-Key': JSONBIN_KEY },
+  })
+  if (!res.ok) throw new Error(`Erro ao carregar dados (${res.status})`)
+  const json = await res.json()
+  const record = json.record ?? {}
+  return { pessoas: record.pessoas ?? [], gastos: record.gastos ?? [] }
+}
+
+async function persistirDados(dados) {
+  await fetch(JSONBIN_URL, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_KEY,
+    },
+    body: JSON.stringify(dados),
+  })
+}
+
+function app() {
+  const ano = new Date().getFullYear()
+
+  return {
+    anoAtual: `${ano}`,
+    mesAtualNum: new Date().getMonth() + 1,
+    meses: MESES,
+    novaPessoa: '',
+    novoGastoDescricao: '',
+    novoGastoValor: '',
+    travado: true,
+    carregando: true,
+    erro: null,
+    gastos: [],
+    pessoas: [],
+
+    async init() {
+      try {
+        const dados = await carregarDados()
+        this.pessoas = dados.pessoas ?? []
+        this.gastos  = dados.gastos  ?? []
+      } catch (e) {
+        this.erro = 'Não foi possível carregar os dados. Verifique as credenciais do JSONBin.'
+      } finally {
+        this.carregando = false
+      }
+    },
+
+    get pagosNoMesAtual() {
+      return this.pessoas.filter(p => p.meses[this.mesAtualNum].status === 'pago').length
+    },
+
+    get totalEntradas() {
+      return this.pessoas.reduce((acc, p) =>
+        acc + Object.values(p.meses).filter(m => m.status === 'pago').length
+      , 0) * 5
+    },
+
+    get totalGastos() {
+      return this.gastos.reduce((acc, g) => acc + g.valor, 0)
+    },
+
+    get saldoTotal() {
+      return this.totalEntradas - this.totalGastos
+    },
+
+    totalPorMes(mesNum) {
+      return this.pessoas.filter(p => p.meses[mesNum].status === 'pago').length
+    },
+
+    totalPorMesLabel(mesNum) {
+      const pagos = this.pessoas.filter(p => p.meses[mesNum].status === 'pago').length
+      return `R$ ${pagos * 5}`
+    },
+
+    salvar() {
+      persistirDados({ pessoas: this.pessoas, gastos: this.gastos })
+    },
+
+    adicionarPessoa() {
+      const nome = this.novaPessoa.trim()
+      if (!nome) return
+      this.pessoas.push({ id: Date.now(), nome, meses: mesesVazios() })
+      this.novaPessoa = ''
+      this.salvar()
+    },
+
+    toggleMes(pessoa, mesNum) {
+      if (this.travado) return
+      const entry = pessoa.meses[mesNum]
+      const idx = CICLO.indexOf(entry.status)
+      entry.status = CICLO[(idx + 1) % CICLO.length]
+      entry.data = entry.status === 'pago'
+        ? new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        : null
+      this.salvar()
+    },
+
+    removerPessoa(id) {
+      this.pessoas = this.pessoas.filter(p => p.id !== id)
+      this.salvar()
+    },
+
+    adicionarGasto() {
+      const descricao = this.novoGastoDescricao.trim()
+      const valor = parseFloat(this.novoGastoValor)
+      if (!descricao || isNaN(valor) || valor <= 0) return
+      this.gastos.push({
+        id: Date.now(),
+        descricao,
+        valor,
+        data: new Date().toLocaleDateString('pt-BR'),
+      })
+      this.novoGastoDescricao = ''
+      this.novoGastoValor = ''
+      this.salvar()
+    },
+
+    removerGasto(id) {
+      this.gastos = this.gastos.filter(g => g.id !== id)
+      this.salvar()
+    },
+  }
+}
+</script>
+
+</body>
+</html>
