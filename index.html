@@ -18,11 +18,37 @@
         <h1 class="text-2xl font-bold text-gray-800">Controle de Mensalidades</h1>
         <p class="text-sm text-gray-500 mt-1" x-text="anoAtual"></p>
       </div>
-      <div class="text-right">
-        <p class="text-sm text-gray-500">Pagamentos no mês atual</p>
-        <p class="text-2xl font-bold" :class="pagosNoMesAtual === pessoas.length ? 'text-green-600' : 'text-blue-600'">
-          <span x-text="pagosNoMesAtual"></span>/<span x-text="pessoas.length"></span>
-        </p>
+      <div class="flex items-center gap-4">
+        <div class="text-right">
+          <p class="text-sm text-gray-500">Pagamentos no mês atual</p>
+          <p class="text-2xl font-bold" :class="pagosNoMesAtual === pessoas.length ? 'text-green-600' : 'text-blue-600'">
+            <span x-text="pagosNoMesAtual"></span>/<span x-text="pessoas.length"></span>
+          </p>
+        </div>
+        <button
+          @click="salvar"
+          :disabled="!alterado || salvando"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+          :class="salvando
+            ? 'bg-gray-100 text-gray-400 cursor-default'
+            : alterado
+              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+              : 'bg-gray-100 text-gray-400 cursor-default'"
+          :title="salvando ? 'Salvando...' : alterado ? 'Salvar alterações' : 'Sem alterações'"
+        >
+          <template x-if="salvando">
+            <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+          </template>
+          <template x-if="!salvando">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+          </template>
+          <span x-text="salvando ? 'Salvando...' : 'Salvar'"></span>
+        </button>
       </div>
     </div>
 
@@ -265,7 +291,7 @@
       <p class="text-xs text-red-400 text-center mt-4" x-text="erro"></p>
     </template>
     <template x-if="!carregando && !erro">
-      <p class="text-xs text-gray-400 text-center mt-6">Os dados são salvos automaticamente no JSONBin.</p>
+      <p class="text-xs text-center mt-6 transition-colors" :class="alterado ? 'text-orange-400' : 'text-gray-400'" x-text="alterado ? 'Alterações não salvas.' : 'Todos os dados estão salvos.'"></p>
     </template>
   </div>
 </div>
@@ -318,6 +344,8 @@ function app() {
     novoGastoValor: '',
     travado: true,
     carregando: true,
+    salvando: false,
+    alterado: false,
     erro: null,
     gastos: [],
     pessoas: [],
@@ -361,8 +389,22 @@ function app() {
       return `R$ ${pagos * 5}`
     },
 
-    salvar() {
-      persistirDados({ pessoas: this.pessoas, gastos: this.gastos })
+    async salvar() {
+      if (!this.alterado || this.salvando) return
+      this.salvando = true
+      this.erro = null
+      try {
+        await persistirDados({ pessoas: this.pessoas, gastos: this.gastos })
+        this.alterado = false
+      } catch (e) {
+        this.erro = 'Erro ao salvar. Tente novamente.'
+      } finally {
+        this.salvando = false
+      }
+    },
+
+    marcarAlterado() {
+      this.alterado = true
     },
 
     adicionarPessoa() {
@@ -370,7 +412,7 @@ function app() {
       if (!nome) return
       this.pessoas.push({ id: Date.now(), nome, meses: mesesVazios() })
       this.novaPessoa = ''
-      this.salvar()
+      this.marcarAlterado()
     },
 
     toggleMes(pessoa, mesNum) {
@@ -381,12 +423,12 @@ function app() {
       entry.data = entry.status === 'pago'
         ? new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
         : null
-      this.salvar()
+      this.marcarAlterado()
     },
 
     removerPessoa(id) {
       this.pessoas = this.pessoas.filter(p => p.id !== id)
-      this.salvar()
+      this.marcarAlterado()
     },
 
     adicionarGasto() {
@@ -401,12 +443,12 @@ function app() {
       })
       this.novoGastoDescricao = ''
       this.novoGastoValor = ''
-      this.salvar()
+      this.marcarAlterado()
     },
 
     removerGasto(id) {
       this.gastos = this.gastos.filter(g => g.id !== id)
-      this.salvar()
+      this.marcarAlterado()
     },
   }
 }
