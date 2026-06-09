@@ -427,12 +427,8 @@ function app() {
       const nomeMesAtual = MESES[this.mesAtualNum - 1].abrev
       const nomeMeses = (nums) => nums.map(n => MESES[n - 1].abrev).join(', ')
       const devedores = this.pessoas.filter(p => this.pessoaDevendo(p))
-      const emDia = this.pessoas.filter(p => !this.pessoaDevendo(p))
 
       let msg = `📋 Mensalidades LBA – ${nomeMesAtual}/${this.anoAtual}\n\n`
-      if (emDia.length) {
-        msg += `✅ Em dia:\n${emDia.map(p => `- ${p.nome}`).join('\n')}\n\n`
-      }
       if (devedores.length) {
         msg += `⚠️ Pendentes:\n`
         for (const p of devedores) {
@@ -440,11 +436,14 @@ function app() {
           for (let m = 1; m <= this.mesAtualNum; m++) {
             if (p.meses[m].status === 'pendente') mesesDevendo.push(m)
           }
-          msg += `- ${p.nome} (${nomeMeses(mesesDevendo)})\n`
+          const total = mesesDevendo.length * 5
+          msg += `- ${p.nome} (${nomeMeses(mesesDevendo)}) → R$ ${total},00\n`
         }
         msg += '\n'
       }
-      msg += `💰 Valor por mensalidade: R$ 5,00`
+      msg += `💰 Valor por mensalidade: R$ 5,00\n`
+      msg += `🏦 PIX: 27997758757\n`
+      msg += `📊 Saldo atual: R$ ${this.saldoTotal.toFixed(2)}`
 
       navigator.clipboard.writeText(msg)
       this.copiadoWpp = true
