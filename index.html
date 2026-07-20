@@ -21,8 +21,8 @@
       <div class="flex items-center gap-4">
         <div class="text-right">
           <p class="text-sm text-gray-500">Pagamentos no mês atual</p>
-          <p class="text-2xl font-bold" :class="pagosNoMesAtual === pessoas.length ? 'text-green-600' : 'text-blue-600'">
-            <span x-text="pagosNoMesAtual"></span>/<span x-text="pessoas.length"></span>
+          <p class="text-2xl font-bold" :class="pagosNoMesAtual === pessoasAtivas.length ? 'text-green-600' : 'text-blue-600'">
+            <span x-text="pagosNoMesAtual"></span>/<span x-text="pessoasAtivas.length"></span>
           </p>
         </div>
         <button
@@ -115,6 +115,30 @@
           </svg>
         </template>
       </button>
+      <button
+        type="button"
+        x-show="pessoas.some(p => p.oculto)"
+        @click="mostrarOcultas = !mostrarOcultas"
+        :title="mostrarOcultas ? 'Esconder pessoas ocultas' : 'Mostrar pessoas ocultas'"
+        class="flex items-center justify-center w-10 rounded-lg border transition-colors"
+        :class="mostrarOcultas
+          ? 'border-blue-400 text-blue-600 bg-blue-50 hover:bg-blue-100'
+          : 'border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600'"
+      >
+        <!-- Mostrando ocultas: olho -->
+        <template x-if="mostrarOcultas">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        </template>
+        <!-- Escondendo ocultas: olho cortado -->
+        <template x-if="!mostrarOcultas">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+          </svg>
+        </template>
+      </button>
     </form>
 
     <!-- Tabela -->
@@ -141,14 +165,14 @@
           </tr>
         </thead>
         <tbody>
-          <template x-if="pessoas.length === 0">
+          <template x-if="pessoasExibidas.length === 0">
             <tr>
               <td :colspan="meses.length + 2" class="text-center py-8 text-gray-400">Nenhuma pessoa cadastrada.</td>
             </tr>
           </template>
           <template x-for="pessoa in pessoasExibidas" :key="pessoa.id">
-            <tr class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-              <td class="px-4 py-3 font-medium sticky left-0 bg-white hover:bg-gray-50 z-10 border-r border-gray-100" :class="pessoaDevendo(pessoa) ? 'text-red-600 font-semibold' : 'text-gray-800'" x-text="pessoa.nome"></td>
+            <tr class="border-t border-gray-100 hover:bg-gray-50 transition-colors" :class="pessoa.oculto ? 'opacity-50' : ''">
+              <td class="px-4 py-3 font-medium sticky left-0 bg-white hover:bg-gray-50 z-10 border-r border-gray-100" :class="pessoa.oculto ? 'text-gray-400' : (pessoaDevendo(pessoa) ? 'text-red-600 font-semibold' : 'text-gray-800')" x-text="pessoa.nome"></td>
               <template x-for="mes in meses" :key="mes.num">
                 <td
                   class="text-center px-1 py-3"
@@ -190,15 +214,36 @@
                 </td>
               </template>
               <td class="text-center px-4 py-3 sticky right-0 bg-white hover:bg-gray-50 z-10 border-l border-gray-100">
-                <button
-                  @click="removerPessoa(pessoa.id)"
-                  class="text-gray-300 hover:text-red-500 transition-colors mx-auto flex items-center justify-center"
-                  title="Remover pessoa"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+                <div class="flex items-center justify-center gap-2">
+                  <button
+                    @click="toggleOculto(pessoa)"
+                    class="text-gray-300 hover:text-blue-500 transition-colors flex items-center justify-center"
+                    :title="pessoa.oculto ? 'Mostrar na lista' : 'Ocultar da lista'"
+                  >
+                    <!-- Visível: olho -->
+                    <template x-if="!pessoa.oculto">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </template>
+                    <!-- Oculta: olho cortado -->
+                    <template x-if="pessoa.oculto">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    </template>
+                  </button>
+                  <button
+                    @click="removerPessoa(pessoa.id)"
+                    class="text-gray-300 hover:text-red-500 transition-colors flex items-center justify-center"
+                    title="Remover pessoa"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
               </td>
             </tr>
           </template>
@@ -213,7 +258,7 @@
                   :class="mes.num === mesAtualNum ? 'bg-blue-50/40' : ''"
                 >
                   <span
-                    :class="totalPorMes(mes.num) === pessoas.length
+                    :class="totalPorMes(mes.num) === pessoasAtivas.length
                       ? 'text-green-600'
                       : totalPorMes(mes.num) === 0
                         ? 'text-gray-300'
@@ -376,7 +421,8 @@ function app() {
     gastos: [],
     pessoas: [],
     historico: [],
-    ordemAlfabetica: false,
+    ordemAlfabetica: true,
+    mostrarOcultas: false,
     copiadoWpp: false,
 
     async init() {
@@ -393,7 +439,7 @@ function app() {
     },
 
     get pagosNoMesAtual() {
-      return this.pessoas.filter(p => p.meses[this.mesAtualNum].status === 'pago').length
+      return this.pessoasAtivas.filter(p => p.meses[this.mesAtualNum].status === 'pago').length
     },
 
     get totalEntradas() {
@@ -410,9 +456,14 @@ function app() {
       return this.totalEntradas - this.totalGastos
     },
 
+    get pessoasAtivas() {
+      return this.pessoas.filter(p => !p.oculto)
+    },
+
     get pessoasExibidas() {
-      if (!this.ordemAlfabetica) return this.pessoas
-      return [...this.pessoas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+      const base = this.mostrarOcultas ? this.pessoas : this.pessoasAtivas
+      if (!this.ordemAlfabetica) return base
+      return [...base].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
     },
 
     pessoaDevendo(pessoa) {
@@ -426,7 +477,7 @@ function app() {
     copiarMensagemWpp() {
       const nomeMesAtual = MESES[this.mesAtualNum - 1].abrev
       const nomeMeses = (nums) => nums.map(n => MESES[n - 1].abrev).join(', ')
-      const devedores = this.pessoas.filter(p => this.pessoaDevendo(p))
+      const devedores = this.pessoasAtivas.filter(p => this.pessoaDevendo(p))
 
       let msg = `📋 Mensalidades LBA – ${nomeMesAtual}/${this.anoAtual}\n\n`
       if (devedores.length) {
@@ -451,7 +502,7 @@ function app() {
     },
 
     totalPorMes(mesNum) {
-      return this.pessoas.filter(p => p.meses[mesNum].status === 'pago').length
+      return this.pessoasAtivas.filter(p => p.meses[mesNum].status === 'pago').length
     },
 
     totalPorMesLabel(mesNum) {
@@ -498,6 +549,11 @@ function app() {
       const dia  = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
       const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       this.historico = [{ id: now.getTime(), desc: `Alterado dia ${dia} às ${hora}: ${pessoa.nome} – ${MESES[mesNum - 1].abrev}` }]
+    },
+
+    toggleOculto(pessoa) {
+      pessoa.oculto = !pessoa.oculto
+      this.marcarAlterado()
     },
 
     removerPessoa(id) {
