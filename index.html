@@ -396,11 +396,12 @@ async function carregarDados() {
 }
 
 async function persistirDados(dados) {
-  await fetch('/.netlify/functions/dados', {
+  const res = await fetch('/.netlify/functions/dados', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados),
   })
+  if (!res.ok) throw new Error(`Erro ao salvar dados (${res.status})`)
 }
 
 function app() {

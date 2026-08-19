@@ -11,7 +11,11 @@ exports.handler = async (event) => {
     const record = json.record ?? {}
     return {
       statusCode: 200,
-      body: JSON.stringify({ pessoas: record.pessoas ?? [], gastos: record.gastos ?? [] }),
+      body: JSON.stringify({
+        pessoas: record.pessoas ?? [],
+        gastos: record.gastos ?? [],
+        historico: record.historico ?? [],
+      }),
     }
   }
 
@@ -21,7 +25,7 @@ exports.handler = async (event) => {
       headers: { 'Content-Type': 'application/json', 'X-Master-Key': key },
       body: event.body,
     })
-    return { statusCode: 200, body: await res.text() }
+    return { statusCode: res.status, body: await res.text() }
   }
 
   return { statusCode: 405, body: 'Method not allowed' }
