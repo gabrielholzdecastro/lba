@@ -479,6 +479,7 @@ function app() {
       const nomeMesAtual = MESES[this.mesAtualNum - 1].abrev
       const nomeMeses = (nums) => nums.map(n => MESES[n - 1].abrev).join(', ')
       const devedores = this.pessoasAtivas.filter(p => this.pessoaDevendo(p))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
 
       let msg = `📋 Mensalidades LBA – ${nomeMesAtual}/${this.anoAtual}\n\n`
       if (devedores.length) {
